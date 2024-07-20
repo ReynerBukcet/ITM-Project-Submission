@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bidet Tracker</title>
+    {% load static %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #f0f0f0; 
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: #fff; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+            max-width: 400px; 
+            margin: 20px auto; 
+        }
+
+        .container img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .buttons {
+            margin-top: 20px;
+        }
+
+        .buttons button {
+            width: 100%;
+            max-width: 300px;
+            margin: 10px auto;
+            padding: 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: white;
+            transition: background-color 0.3s ease; 
+        }
+
+        .buttons button:hover {
+            background-color: #45a049;
+        }
+        .logout-button {
+            background-color: #ff4d4d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .logout-button:hover {
+            background-color: #e60000;
+        }
+        @media (min-width: 768px) {
+            .buttons button {
+                width: 80%;
+            }
+        }
+    </style>
+    <!--Style cool yey -->
+</head>
+<body>
+    <div class="container">
+        <img src="{% static 'core/images/Logo.png' %}" alt="Bidet Image" width="300">
+        <div class="buttons">
+            <button onclick="location.href='{% url 'find_bidets' %}'">
+                <img src="{% static 'core/images/LookBidet.png' %}" alt="Find Me A Bidet">
+            </button>
+            
+            <button onclick="location.href='{% url 'add_bidet' %}'">
+                <img src="{% static 'core/images/AddBidet.png' %}" alt="Add a Bidet">
+            </button>
+
+        </div>
+        {% if user.is_authenticated %}
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-button">Sign Out</button>
+                </form>
+            {% endif %}
+    </div>
+</body>
+</html>
+<!--Home page has the logo and 2 images that serves as button to other pages and button to logout -->

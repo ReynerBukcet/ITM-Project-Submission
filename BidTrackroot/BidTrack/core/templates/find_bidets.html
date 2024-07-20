@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Find Bidets</title>
+    {% load static %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            padding: 20px;
+            text-align: center; 
+        }
+
+        h1 {
+            font-size: 1.5em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button.bidet-button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 1em;
+            background-color: white;
+            color: #333; 
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); 
+            text-align: left; 
+        }
+
+        button.bidet-button:hover {
+            background-color: #f0f0f0; 
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .home-button {
+            background-color: #008CBA;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+            max-width: 400px;
+        }
+
+        .home-button:hover {
+            background-color: #007bb5;
+        }
+
+        .logout-button {
+            background-color: #ff4d4d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+            max-width: 400px;
+        }
+
+        .logout-button:hover {
+            background-color: #e60000;
+        }
+
+        .logout-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .centered-image {
+            display: block;
+            margin: 0 auto;
+            width: 600px;
+        }
+    </style>
+    <!--Style cool yey -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap" async defer></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var map, marker, infowindow;
+        
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat: 14.6395704, lng: 121.0785779},
+                zoom: 8
+            });
+    
+            infowindow = new google.maps.InfoWindow();
+            marker = new google.maps.Marker({
+                map: map,
+                anchorPoint: new google.maps.Point(0, -29)
+            });
+    
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+    
+                    map.setCenter(pos);
+                    map.setZoom(17);
+                    marker.setPosition(pos);
+                    marker.setVisible(true);
+    
+                    var geocoder = new google.maps.Geocoder();
+                    geocoder.geocode({'location': pos}, function(results, status) {
+                        if (status === 'OK') {
+                            if (results[0]) {
+                                infowindow.setContent('<div><strong>Current Location</strong><br>' + results[0].formatted_address);
+                                infowindow.open(map, marker);
+    
+                                document.getElementById('id_latitude').value = pos.lat;
+                                document.getElementById('id_longitude').value = pos.lng;
+                                document.getElementById('id_address').value = results[0].formatted_address;
+
+                               
+                                var now = new Date();
+                                var userTime = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
+                                
+                               
+                                findNearestBidets(pos.lat, pos.lng, userTime);
+                            } else {
+                                window.alert('No results found');
+                            }
+                        } else {
+                            window.alert('Geocoder failed due to: ' + status);
+                        }
+                    });
+                }, function() {
+                    handleLocationError(true, infowindow, map.getCenter());
+                });
+            } else {
+                handleLocationError(false, infowindow, map.getCenter());
+            }
+        }
+    
+        function handleLocationError(browserHasGeolocation, infowindow, pos) {
+            infowindow.setPosition(pos);
+            infowindow.setContent(browserHasGeolocation ?
+                                  'Error: The Geolocation service failed.' :
+                                  'Error: Your browser doesn\'t support geolocation.');
+            infowindow.open(map);
+        }
+    
+        function findNearestBidets(userLat, userLng, userTime) {
+            var form = $('#location-form');
+            $.ajax({
+                url: form.attr('action'),
+                data: form.serialize() + '&user_time=' + userTime,
+                type: form.attr('method'),
+                success: function(response) {
+                    $('#bidet-list').empty();
+                    var bidets = response;
+                    var destinations = bidets.map(function(bidet) {
+                        return {lat: bidet.latitude, lng: bidet.longitude};
+                    });
+    
+                    var service = new google.maps.DistanceMatrixService();
+                    service.getDistanceMatrix({
+                        origins: [{lat: userLat, lng: userLng}],
+                        destinations: destinations,
+                        travelMode: google.maps.TravelMode.WALKING,
+                        unitSystem: google.maps.UnitSystem.METRIC
+                    }, function(distanceResponse, status) {
+                        if (status === 'OK') {
+                            for (var i = 0; i < bidets.length; i++) {
+                                bidets[i].distance = distanceResponse.rows[0].elements[i].distance.value;
+                                bidets[i].distanceText = distanceResponse.rows[0].elements[i].distance.text;
+                                bidets[i].durationText = distanceResponse.rows[0].elements[i].duration.text;
+                            }
+    
+                            // Sort bidets by walking distance
+                            bidets.sort(function(a, b) {
+                                return a.distance - b.distance;
+                            });
+    
+                            bidets.forEach(function(bidet) {
+                                var bidetMarker = new google.maps.Marker({
+                                    position: {lat: bidet.latitude, lng: bidet.longitude},
+                                    map: map,
+                                    title: bidet.name
+                                });
+                                var bidetInfoWindow = new google.maps.InfoWindow({
+                                    content: '<div><strong>' + bidet.name + '</strong><br>' + bidet.address + '</div>'
+                                });
+                                bidetMarker.addListener('click', function() {
+                                    bidetInfoWindow.open(map, bidetMarker);
+                                });
+    
+                                var button = document.createElement('button');
+                                var handicapText = bidet.handicap_friendly ? 'Handicap Accessible' : 'Not Handicap Accessible';
+                                button.textContent = bidet.name + ' - ' + bidet.address + ' (' + bidet.distanceText + ', ' + bidet.durationText + ')' + ' - ' + handicapText + ' - ' + 'Open: ' + bidet.opening_time + ' to ' + bidet.closing_time;
+                                button.className = 'bidet-button';
+                                button.addEventListener('click', function() {
+                                    window.location.href = '/bidet/' + bidet.name + '/';
+                                });
+                                $('#bidet-list').append(button);
+                            });
+                        } else {
+                            console.error('Error calculating distance: ' + status);
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+<!-- Script for the showing of bidets based on the filters of handicap access, open time, distance -->
+</head>
+<body>
+    <div class="container">
+        <img src="{% static 'core/images/FindBidet.png' %}" alt="Find a Bidet" class="centered-image">
+        {% if error %}
+        <p style="color: red;">{{ error }}</p>
+        {% endif %}
+        <form id="location-form" method="get" action="{% url 'find_bidets' %}">
+            <input id="id_latitude" name="latitude" type="hidden">
+            <input id="id_longitude" name="longitude" type="hidden">
+            <input id="id_address" name="address" type="hidden">
+            <input id="user_time" name="user_time" type="hidden"> 
+        </form>
+        <div id="map"></div>
+        <div id="bidet-list"></div>
+        <button class="home-button" onclick="location.href='{% url 'home' %}'">Return to Home</button>
+        {% if user.is_authenticated %}
+            <div class="logout-container">
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-button">Sign Out</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+    <!--the body which is what is displayed -->
+</body>
+</html>

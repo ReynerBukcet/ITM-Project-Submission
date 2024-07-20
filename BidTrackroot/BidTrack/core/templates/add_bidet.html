@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add a Bidet</title>
+    {% load static %}
+    <!-- This is to load the static if any are loaded in this file -->
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- This is to help make it mobile view  -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        input[type="text"], input[type="time"], button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .home-button {
+            background-color: #008CBA;
+            margin-top: 10px;
+        }
+
+        .home-button:hover {
+            background-color: #007bb5;
+        }
+
+        .logout-button {
+            background-color: #ff4d4d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .logout-button:hover {
+            background-color: #e60000;
+        }
+
+        .logout-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-container label {
+            font-size: 1em;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+    <!-- These are styles they make you look cool (they make the file look more presentable) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places"></script>
+    <!-- This help loads the google map api -->
+    <script>
+        function initMap() {
+            var map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat: 14.6395704, lng: 121.0785779},
+                zoom: 14
+            }); //Centered at ateneo
+
+            var input = document.getElementById('location-search');
+            var autocomplete = new google.maps.places.Autocomplete(input);
+            autocomplete.bindTo('bounds', map);
+
+            var infowindow = new google.maps.InfoWindow();
+            var marker = new google.maps.Marker({
+                map: map,
+                anchorPoint: new google.maps.Point(0, -29)
+            }); //Map 
+
+            autocomplete.addListener('place_changed', function() {
+                infowindow.close();
+                marker.setVisible(false);
+                var place = autocomplete.getPlace();
+                if (!place.geometry) {
+                    window.alert("No details available for input: '" + place.name + "'");
+                    return;
+                }
+
+                if (place.geometry.viewport) {
+                    map.fitBounds(place.geometry.viewport);
+                } else {
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(17);
+                }
+                marker.setPosition(place.geometry.location);
+                marker.setVisible(true);
+
+                var address = '';
+                if (place.address_components) {
+                    address = [
+                        (place.address_components[0] && place.address_components[0].short_name || ''),
+                        (place.address_components[1] && place.address_components[1].short_name || ''),
+                        (place.address_components[2] && place.address_components[2].short_name || '')
+                    ].join(' ');
+                }
+
+                infowindow.setContent('<div><strong>' + place.name + '</strong><br>' + address);
+                infowindow.open(map, marker);
+
+                document.getElementById('id_latitude').value = place.geometry.location.lat();
+                document.getElementById('id_longitude').value = place.geometry.location.lng();
+                document.getElementById('id_address').value = place.formatted_address;
+            });
+        }
+
+    </script>
+    <!-- Script for the map where they can select an address with the help of Google Maps -->
+</head>
+<body onload="initMap()">
+    <div class="container">
+        <h1>Add a Bidet</h1>
+        <form method="post">
+            {% csrf_token %}
+            <input id="location-search" type="text" placeholder="Search for a location">
+            <div id="map"></div>
+            {{ form.as_p }}
+            <button type="submit">Add</button>
+        </form>
+        <button class="home-button" onclick="location.href='{% url 'home' %}'">Return to Home</button>
+        <div class="logout-container">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="logout-button">Sign Out</button>
+            </form>
+        </div>
+    </div>
+</body>
+<!-- This is the body this is where what most of what the user sees is placed -->
+</html>
+
